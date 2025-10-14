@@ -14,8 +14,6 @@ The app fetches real-time electricity prices for Germany (DE-LU region) and find
 
 ![StromCoach DE Interface](./Screenshot.png)
 
-*Note: Replace this placeholder with your actual screenshot*
-
 ## Features
 
 -  **Real-time Price Data**: Fetches tomorrow's hourly electricity prices from Energy Charts API
