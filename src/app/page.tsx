@@ -21,6 +21,21 @@ export default function Home() {
   const [deadline, setDeadline] = useState<string>(() => 
     typeof window !== 'undefined' ? localStorage.getItem('deadline') ?? '07:00' : '07:00'
   );
+  const [selectedDevice, setSelectedDevice] = useState<string>(() => 
+    typeof window !== 'undefined' ? localStorage.getItem('selectedDevice') ?? 'washing-machine' : 'washing-machine'
+  );
+
+  // Common household devices with power consumption (kW)
+  const devices = [
+    { id: 'washing-machine', name: 'Washing Machine', power: 2.5, icon: '🧼' },
+    { id: 'dishwasher', name: 'Dishwasher', power: 1.8, icon: '🍽️' },
+    { id: 'tumble-dryer', name: 'Tumble Dryer', power: 3.0, icon: '🌪️' },
+    { id: 'electric-car', name: 'Electric Car (3kW)', power: 3.0, icon: '🔋' },
+    { id: 'electric-car-7kw', name: 'Electric Car (7kW)', power: 7.0, icon: '🔋' },
+    { id: 'heat-pump', name: 'Heat Pump', power: 4.0, icon: '🌡️' },
+    { id: 'water-heater', name: 'Water Heater', power: 2.0, icon: '🛁' },
+    { id: 'custom', name: 'Custom Device', power: 1.0, icon: '⚡' }
+  ];
 
   useEffect(() => {
     getTomorrowPricesDELU()
@@ -45,6 +60,11 @@ export default function Home() {
       localStorage.setItem('deadline', deadline); 
     }
   }, [deadline]);
+  useEffect(() => { 
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('selectedDevice', selectedDevice); 
+    }
+  }, [selectedDevice]);
 
   // Derive hourly data
   const hourly: HourPoint[] = useMemo(() => quarters ? aggregateToHours(quarters) : [], [quarters]);
@@ -60,11 +80,12 @@ export default function Home() {
     if (!plan) return null;
     const flatAvg = flatCt; // ct/kWh
     const deltaCt = flatAvg - plan.avg_ct_per_kwh; // cents per kWh saved
-    // Assume 1.6 kWh per hour as a neutral demo (you'll replace with per-device later)
-    const assumedKwh = Math.max(1, Math.floor(duration)) * 1.0; // 1 kWh per hour for MVP
-    const euro = (deltaCt / 100) * assumedKwh;
-    return { deltaCt, euro };
-  }, [plan, flatCt, duration]);
+    const selectedDeviceData = devices.find(d => d.id === selectedDevice);
+    const devicePower = selectedDeviceData?.power || 1.0; // kW
+    const totalKwh = Math.max(1, Math.floor(duration)) * devicePower; // Total energy consumption
+    const euro = (deltaCt / 100) * totalKwh;
+    return { deltaCt, euro, devicePower, totalKwh };
+  }, [plan, flatCt, duration, selectedDevice, devices]);
 
   if (loading) return (
     <main className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
@@ -171,6 +192,50 @@ export default function Home() {
           </div>
         </section>
 
+        {/* Device Selection Card */}
+        <section className="bg-white rounded-xl shadow-lg p-6 mb-8 border border-gray-100">
+          <div className="flex items-center mb-4">
+            <span className="text-2xl mr-3">🔌</span>
+            <h2 className="text-xl font-semibold text-gray-800">Select Your Device</h2>
+          </div>
+          
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {devices.map((device) => (
+              <button
+                key={device.id}
+                onClick={() => setSelectedDevice(device.id)}
+                className={`
+                  p-4 rounded-lg border-2 transition-all hover:scale-105 text-center
+                  ${selectedDevice === device.id 
+                    ? 'border-blue-500 bg-blue-50 shadow-md' 
+                    : 'border-gray-200 bg-gray-50 hover:border-gray-300'
+                  }
+                `}
+              >
+                <div className="text-3xl mb-2">{device.icon}</div>
+                <div className={`font-medium text-sm ${selectedDevice === device.id ? 'text-blue-700' : 'text-gray-700'}`}>
+                  {device.name}
+                </div>
+                <div className={`text-xs mt-1 ${selectedDevice === device.id ? 'text-blue-600' : 'text-gray-500'}`}>
+                  {device.power} kW
+                </div>
+              </button>
+            ))}
+          </div>
+          
+          {savings && (
+            <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+              <div className="text-sm text-gray-600 mb-2">Energy consumption for {duration} hour{duration > 1 ? 's' : ''}:</div>
+              <div className="text-lg font-semibold text-gray-800">
+                {savings.totalKwh.toFixed(1)} kWh total
+              </div>
+              <div className="text-sm text-gray-600">
+                ({savings.devicePower} kW × {duration} hour{duration > 1 ? 's' : ''})
+              </div>
+            </div>
+          )}
+        </section>
+
         {/* Results Card */}
         <section className="bg-white rounded-xl shadow-lg p-6 mb-8 border border-gray-100">
           <div className="flex items-center mb-4">
@@ -196,14 +261,20 @@ export default function Home() {
               
               {savings && (
                 <div className="bg-white rounded-lg p-4 border border-green-200">
-                  <div className="flex items-center justify-between">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                       <div className="text-sm text-gray-600 mb-1">Savings vs flat rate:</div>
                       <div className="text-lg font-semibold text-green-700">
                         ~{savings.deltaCt.toFixed(2)} ct/kWh
                       </div>
                     </div>
-                    <div className="text-right">
+                    <div>
+                      <div className="text-sm text-gray-600 mb-1">Energy consumption:</div>
+                      <div className="text-lg font-semibold text-gray-800">
+                        {savings.totalKwh.toFixed(1)} kWh
+                      </div>
+                    </div>
+                    <div>
                       <div className="text-sm text-gray-600 mb-1">Total savings:</div>
                       <div className="text-2xl font-bold text-green-600">
                         €{savings.euro.toFixed(2)}
