@@ -12,7 +12,8 @@ The app fetches real-time electricity prices for Germany (DE-LU region) and find
 
 ## Screenshot
 
-![StromCoach DE Interface](./Screenshot.png)
+![StromCoach DE Interface](./screenshot_1.png)
+![StromCoach DE Interface](./screenshot_2.png)
 
 ## Features
 
